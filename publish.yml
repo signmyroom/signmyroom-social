@@ -1,0 +1,50 @@
+name: Publish due posts
+
+on:
+  schedule:
+    # Every 15 minutes. GitHub's cron can run late under load (5-20 min is
+    # normal), so slots are treated as "publish at or after", never exact.
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+# Never let two runs publish at the same time - that is how duplicates happen.
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Publish
+        env:
+          META_TOKEN: ${{ secrets.META_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+          RAW_BASE: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}
+        run: python publish.py
+
+      - name: Record what was published
+        if: always()
+        run: |
+          if [[ -n "$(git status --porcelain state/)" ]]; then
+            git config user.name  "signmyroom-bot"
+            git config user.email "bot@users.noreply.github.com"
+            git add state/
+            git commit -m "record published posts"
+            # Another run may have pushed while we worked; rebase and retry.
+            for i in 1 2 3; do
+              git pull --rebase --autostash && git push && exit 0
+              sleep 5
+            done
+            exit 1
+          fi
