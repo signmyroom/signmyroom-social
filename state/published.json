@@ -1,5 +1,10 @@
 {
   "published": {
+    "2026-09-07-fb-laborday": {
+      "at": "2026-09-07T21:39:14.931843+00:00",
+      "facebook_error": "HTTP Error 403: Forbidden",
+      "media_url": "https://raw.githubusercontent.com/signmyroom/signmyroom-social/main/queue/2026-09-07/ig_laborday_20260907.jpg"
+    },
     "2026-09-07-ig-laborday": {
       "at": "2026-09-07T11:15:42.327778+00:00",
       "instagram": "17947427352053934",
