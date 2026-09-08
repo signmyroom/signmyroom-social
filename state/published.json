@@ -19,6 +19,11 @@
       "at": "2026-09-08T13:14:04.879366+00:00",
       "instagram": "18094037144551029",
       "media_url": "https://raw.githubusercontent.com/signmyroom/signmyroom-social/main/queue/2026-09-08/reel_kitchenopen_20260908.mp4"
+    },
+    "2026-09-08-ig-1200": {
+      "at": "2026-09-08T16:10:43.645815+00:00",
+      "instagram_error": "HTTP Error 400: Bad Request",
+      "media_url": "https://raw.githubusercontent.com/signmyroom/signmyroom-social/main/queue/2026-09-08/t_1200.jpg"
     }
   }
 }
