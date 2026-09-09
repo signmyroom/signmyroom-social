@@ -44,6 +44,11 @@
       "at": "2026-09-09T04:08:59.332257+00:00",
       "instagram": "18115527136996722",
       "media_url": "https://raw.githubusercontent.com/signmyroom/signmyroom-social/main/queue/2026-09-08/t_2355.jpg"
+    },
+    "2026-09-09-ig-0800": {
+      "at": "2026-09-09T12:11:48.741332+00:00",
+      "instagram_error": "HTTP Error 400: Bad Request",
+      "media_url": "https://raw.githubusercontent.com/signmyroom/signmyroom-social/main/queue/2026-09-09/w_0800.jpg"
     }
   }
 }
