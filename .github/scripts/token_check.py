@@ -36,6 +36,11 @@ def bad(msg):
     problems.append(msg)
 
 
+def info(msg):
+    """Worth seeing, but not a reason to fail the run."""
+    print(f"  INFO  {msg}")
+
+
 def get(path, params, token=None):
     params = {**params, "access_token": token or TOKEN}
     url = f"{GRAPH}/{path}?" + urllib.parse.urlencode(params)
@@ -81,16 +86,25 @@ except Exception as exc:
 
 print("\n=== 4. Does that Page token actually carry publish rights? ===")
 if page_token:
+    # "tasks" is NOT a field on the Page node -- asking for it there returns
+    # "(#100) Tried accessing nonexisting field". It is only returned on the
+    # /me/accounts EDGE. And a system-user token may not list the Page there
+    # at all, so a blank result is informational, never a failure. The real
+    # predictor of a publish 403 is the /photos read below.
     try:
-        perms = get(FB_PAGE_ID, {"fields": "tasks"}, token=page_token)
-        tasks = perms.get("tasks") or []
-        print(f"        tasks granted: {', '.join(tasks) if tasks else '(none reported)'}")
-        if "CREATE_CONTENT" in tasks:
-            ok("CREATE_CONTENT present -- the Page can be posted to")
+        accts = get("me/accounts", {"fields": "id,name,tasks", "limit": "100"})
+        entry = next((d for d in accts.get("data", []) if str(d.get("id")) == str(FB_PAGE_ID)), None)
+        if entry is None:
+            info("Page not listed under /me/accounts (normal for a system user)")
         else:
-            bad("CREATE_CONTENT missing -- publishing to the Page will be refused")
+            tasks = entry.get("tasks") or []
+            print(f"        tasks granted: {', '.join(tasks) if tasks else '(none reported)'}")
+            if "CREATE_CONTENT" in tasks:
+                ok("CREATE_CONTENT present -- the Page can be posted to")
+            else:
+                bad("CREATE_CONTENT missing -- publishing to the Page will be refused")
     except Exception as exc:
-        bad(f"cannot read Page tasks -- {explain(exc)}")
+        info(f"could not enumerate Page tasks ({explain(exc)}) -- not fatal")
 
     # Read the photos edge. A GET here needs the same token the POST uses,
     # so a 403 on this line predicts a 403 on a real post.
