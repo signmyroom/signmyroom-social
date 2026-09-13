@@ -1,0 +1,30 @@
+name: Token check
+
+# Read-only preflight. Proves the Meta token can do everything publish.py
+# needs, WITHOUT posting anything to Facebook or Instagram.
+#
+# Run it by hand: Actions -> Token check -> Run workflow.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Probe the Graph API (publishes nothing)
+        env:
+          META_TOKEN: ${{ secrets.META_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+          RAW_BASE: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}
+        run: python .github/scripts/token_check.py
