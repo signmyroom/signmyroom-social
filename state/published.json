@@ -136,6 +136,17 @@
       "at": "2026-09-14T15:51:15.695462+00:00",
       "facebook_error": "POST /113314831371174/video_reels: HTTP 403 -- OAuthException code=200 subcode=None msg='(#200) Subject does not have permission to post videos on this target, due to lack of pages_show_list permission.' user_msg=None",
       "media_url": "https://raw.githubusercontent.com/signmyroom/signmyroom-social/main/queue/2026-09-14/reel_counter_20260914.mp4"
+    },
+    "2026-09-14-0900-fbonly3": {
+      "at": "2026-09-14T16:04:09.532289+00:00",
+      "facebook": "1849586552695693",
+      "media_url": "https://raw.githubusercontent.com/signmyroom/signmyroom-social/main/queue/2026-09-14/reel_counter_20260914.mp4"
+    },
+    "2026-09-14-1200": {
+      "at": "2026-09-14T16:04:21.131953+00:00",
+      "facebook": "113314831371174_1075117711947754",
+      "instagram_error": "POST /17841461497705995/media_publish: HTTP 400 -- OAuthException code=9007 subcode=2207027 msg='Media ID is not available' user_msg='The media is not ready for publishing, please wait for a moment'",
+      "media_url": "https://raw.githubusercontent.com/signmyroom/signmyroom-social/main/queue/2026-09-14/t_1200.jpg"
     }
   }
 }
