@@ -154,6 +154,32 @@ else:
             bad(f"{item['id']}  {item['media']}  NOT FETCHABLE -- {explain(exc)}")
             bad("  this slot would 404, mark itself published, and burn")
 
+print("\n=== 7. THE REELS PATH (the 9:00 AM slot failed here on 2026-09-14) ===")
+if page_token:
+    # Reels do NOT go through /photos. They use /{page-id}/video_reels, which
+    # asks for its own permission surface on top of pages_manage_posts. Photos
+    # succeeding tells you nothing about whether reels will.
+    try:
+        reels = get(f"{FB_PAGE_ID}/video_reels", {"limit": "1"}, token=page_token)
+        ok(f"/video_reels edge readable with the Page token ({len(reels.get('data', []))} recent)")
+    except Exception as exc:
+        bad(f"/video_reels refused the Page token -- {explain(exc)}")
+        bad("  this is the 2026-09-14 09:00 reel failure; photo posts are unaffected")
+
+    try:
+        perms = get("me/permissions", {})
+        granted = sorted(d["permission"] for d in perms.get("data", []) if d.get("status") == "granted")
+        print(f"        granted: {', '.join(granted) if granted else '(none listed)'}")
+        for need in ("pages_manage_posts", "pages_read_engagement", "publish_video"):
+            if need in granted:
+                ok(f"{need} granted")
+            else:
+                info(f"{need} not listed (a system-user token may not enumerate these)")
+    except Exception as exc:
+        info(f"could not enumerate token permissions ({explain(exc)}) -- not fatal")
+else:
+    bad("skipped -- no Page token")
+
 print("\n" + "=" * 60)
 if problems:
     print(f"{len(problems)} PROBLEM(S) FOUND:\n")
