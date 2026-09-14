@@ -23,6 +23,7 @@ import os
 import pathlib
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
@@ -43,19 +44,55 @@ DRY_RUN = os.environ.get("DRY_RUN") == "1"
 
 # ---------------------------------------------------------------- graph calls
 
+class GraphError(RuntimeError):
+    """A Graph failure with Meta's own explanation attached.
+
+    urllib's default message is just "HTTP Error 403: Forbidden", which says
+    nothing about WHY. Meta puts the real reason in the response body, so read
+    it before it is thrown away -- a 403 that reads "(#200) requires
+    publish_video" is a five-minute fix, and a bare 403 is a day of guessing.
+    """
+
+
+def _raise(where, exc):
+    if isinstance(exc, urllib.error.HTTPError):
+        try:
+            body = exc.read().decode("utf-8", "replace")
+        except Exception:
+            body = "<unreadable>"
+        try:
+            err = json.loads(body).get("error", {})
+            detail = (
+                f"{err.get('type')} code={err.get('code')} "
+                f"subcode={err.get('error_subcode')} "
+                f"msg={err.get('message')!r} "
+                f"user_msg={err.get('error_user_msg')!r}"
+            )
+        except Exception:
+            detail = body[:600]
+        raise GraphError(f"{where}: HTTP {exc.code} -- {detail}") from None
+    raise GraphError(f"{where}: {exc}") from None
+
+
 def _post(path, params, token=None):
     params = {**params, "access_token": token or TOKEN}
     data = urllib.parse.urlencode(params).encode()
     req = urllib.request.Request(f"{GRAPH}/{path}", data=data, method="POST")
-    with urllib.request.urlopen(req, timeout=120) as r:
-        return json.load(r)
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            return json.load(r)
+    except Exception as exc:
+        _raise(f"POST /{path}", exc)
 
 
 def _get(path, params, token=None):
     params = {**params, "access_token": token or TOKEN}
     url = f"{GRAPH}/{path}?" + urllib.parse.urlencode(params)
-    with urllib.request.urlopen(url, timeout=60) as r:
-        return json.load(r)
+    try:
+        with urllib.request.urlopen(url, timeout=60) as r:
+            return json.load(r)
+    except Exception as exc:
+        _raise(f"GET /{path}", exc)
 
 
 def _wait_for_container(creation_id, timeout=600):
@@ -117,8 +154,11 @@ def publish_facebook(item, media_url):
             method="POST",
             headers={"Authorization": f"OAuth {tok}", "file_url": media_url},
         )
-        with urllib.request.urlopen(req, timeout=300) as r:
-            json.load(r)
+        try:
+            with urllib.request.urlopen(req, timeout=300) as r:
+                json.load(r)
+        except Exception as exc:
+            _raise("rupload video-upload", exc)
         _post(
             f"{FB_PAGE_ID}/video_reels",
             {
