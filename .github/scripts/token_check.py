@@ -170,7 +170,12 @@ if page_token:
         perms = get("me/permissions", {})
         granted = sorted(d["permission"] for d in perms.get("data", []) if d.get("status") == "granted")
         print(f"        granted: {', '.join(granted) if granted else '(none listed)'}")
-        for need in ("pages_manage_posts", "pages_read_engagement", "publish_video"):
+        # pages_show_list is NOT optional for reels: Meta answers the
+        # /video_reels POST with "(#200) Subject does not have permission to
+        # post videos on this target, due to lack of pages_show_list
+        # permission." Photos never need it, so it is easy to miss.
+        for need in ("pages_manage_posts", "pages_read_engagement",
+                     "publish_video", "pages_show_list"):
             if need in granted:
                 ok(f"{need} granted")
             else:
