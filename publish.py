@@ -101,7 +101,7 @@ def _wait_for_container(creation_id, timeout=600):
     while time.time() < deadline:
         status = _get(creation_id, {"fields": "status_code,status"})
         code = status.get("status_code")
-        if code == "FINISHED":
+        if code in ("FINISHED", "PUBLISHED", None):
             return
         if code == "ERROR":
             raise RuntimeError(f"container {creation_id} failed: {status.get('status')}")
@@ -126,6 +126,28 @@ def page_token():
     return _PAGE_TOKEN
 
 
+def _media_publish(creation_id, attempts=6, delay=10):
+    """Publish a container, tolerating the "not ready yet" race.
+
+    media_publish answers 400 code=9007 subcode=2207027 "Media ID is not
+    available / The media is not ready for publishing" when the container is
+    still processing. That is a TIMING problem, not a permanent one -- it cost
+    the 2026-09-14 noon post and probably the three unexplained 400s on 9/08
+    and 9/09. Wait and try again rather than burning the slot.
+    """
+    last = None
+    for attempt in range(attempts):
+        try:
+            return _post(f"{IG_USER_ID}/media_publish", {"creation_id": creation_id})
+        except GraphError as exc:
+            if "2207027" not in str(exc) and "code=9007" not in str(exc):
+                raise
+            last = exc
+            print(f"    instagram: container not ready (try {attempt + 1}/{attempts}), waiting {delay}s")
+            time.sleep(delay)
+    raise last
+
+
 def publish_instagram(item, media_url):
     params = {"caption": item["caption_ig"]}
     if item["type"] == "reel":
@@ -136,11 +158,11 @@ def publish_instagram(item, media_url):
     container = _post(f"{IG_USER_ID}/media", params)
     creation_id = container["id"]
 
-    if item["type"] == "reel":
-        _wait_for_container(creation_id)
+    # Wait for EVERY type, not just reels. An image container is usually
+    # FINISHED immediately, but "usually" is what lost the noon slot.
+    _wait_for_container(creation_id)
 
-    result = _post(f"{IG_USER_ID}/media_publish", {"creation_id": creation_id})
-    return result["id"]
+    return _media_publish(creation_id)["id"]
 
 
 def publish_facebook(item, media_url):
