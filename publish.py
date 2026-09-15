@@ -148,6 +148,28 @@ def _media_publish(creation_id, attempts=6, delay=10):
     raise last
 
 
+def _create_container(params, attempts=4, delay=15):
+    """Create the IG container, tolerating Meta's transient fetch failures.
+
+    /media answers 400 code=9004 subcode=2207052 "The media could not be
+    fetched from this URI" when Meta's fetcher has a bad moment against
+    raw.githubusercontent.com. The URL is fine -- 2026-09-15 noon failed this
+    way while the 8:00 slot on the same host succeeded. Retry before burning
+    the slot; any other Graph error still raises immediately.
+    """
+    last = None
+    for attempt in range(attempts):
+        try:
+            return _post(f"{IG_USER_ID}/media", params)
+        except GraphError as exc:
+            if "2207052" not in str(exc):
+                raise
+            last = exc
+            print(f"    instagram: media fetch failed (try {attempt + 1}/{attempts}), waiting {delay}s")
+            time.sleep(delay)
+    raise last
+
+
 def publish_instagram(item, media_url):
     params = {"caption": item["caption_ig"]}
     if item["type"] == "reel":
@@ -155,7 +177,7 @@ def publish_instagram(item, media_url):
     else:
         params["image_url"] = media_url
 
-    container = _post(f"{IG_USER_ID}/media", params)
+    container = _create_container(params)
     creation_id = container["id"]
 
     # Wait for EVERY type, not just reels. An image container is usually
