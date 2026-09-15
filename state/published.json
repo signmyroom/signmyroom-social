@@ -182,6 +182,12 @@
       "facebook": "113314831371174_1075799061879619",
       "instagram": "18160607104433710",
       "media_url": "https://raw.githubusercontent.com/signmyroom/signmyroom-social/main/queue/2026-09-15/t_0800.jpg"
+    },
+    "2026-09-15-1200": {
+      "at": "2026-09-15T16:09:07.913416+00:00",
+      "facebook": "113314831371174_1075969578529234",
+      "instagram_error": "POST /17841461497705995/media: HTTP 400 -- OAuthException code=9004 subcode=2207052 msg='Only photo or video can be accepted as media type.' user_msg='The media could not be fetched from this URI: https://raw.githubusercontent.com/signmyroom/signmyroom-social/main/queue/2026-09-15/t_1200.jpg.Please check the limitations section in our development document for more information: https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media#creating'",
+      "media_url": "https://raw.githubusercontent.com/signmyroom/signmyroom-social/main/queue/2026-09-15/t_1200.jpg"
     }
   }
 }
