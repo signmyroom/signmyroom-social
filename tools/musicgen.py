@@ -1,13 +1,13 @@
 """SignMyRoom reel music generator (all synthesized = royalty-free, safe for paid ads).
 Usage: python3 tools/musicgen.py <lofi|ukulele|tropical|funk|folk> <seconds> out.wav [--transpose N] [--tempo X] [--seed N]
 Then mux: measure ebur128, volume to -14 LUFS, alimiter=limit=0.84:level=false, AAC 192k stereo.
-Mike approved all 5 styles 2026-09-30."""
+Mike approved all 5 styles 2026-09-30. 'country' (barnyard two-step: boom-chick bass, swung banjo rolls, soft fiddle) added 2026-10-01."""
 import numpy as np, sys, wave
 from scipy.signal import butter, sosfilt, fftconvolve
 SR=44100
 import argparse
 ap=argparse.ArgumentParser(description='SignMyRoom royalty-free reel music generator')
-ap.add_argument('style',choices=['lofi','ukulele','tropical','funk','folk']);ap.add_argument('dur',type=float);ap.add_argument('out')
+ap.add_argument('style',choices=['lofi','ukulele','tropical','funk','folk','country']);ap.add_argument('dur',type=float);ap.add_argument('out')
 ap.add_argument('--transpose',type=int,default=0,help='semitones, -5..+5');ap.add_argument('--tempo',type=float,default=1.0,help='tempo multiplier 0.9..1.1');ap.add_argument('--seed',type=int,default=7)
 A=ap.parse_args();TR=A.transpose;BPMX=A.tempo
 rng=np.random.default_rng(A.seed)
@@ -143,6 +143,28 @@ def song(style,dur):
             for k in (1,3): st(L,R,t0+k*beat,snare(.15,160))
             st(L,R,t0,bass(midi(ch[0]-12),beat*1.8),.35)
         return finish(L[:int(dur*SR)],R[:int(dur*SR)],dur,.22,9500)
+    if style=='country':
+        bpm=112*BPMX; beat=60/bpm; bar=4*beat; sw=0.62  # swung eighths
+        prog=[(43,[55,59,62,67]),(48,[55,60,64,67]),(50,[57,62,66,69]),(43,[55,59,62,67])] # G C D G
+        fid=[71,74,76,74, 72,76,79,76, 74,78,81,78, 79,74,71,67]
+        def fiddle(f,d):
+            t=T(d); vib=1+0.006*np.sin(2*np.pi*5.5*t)*np.clip(t*3,0,1); ph=2*np.pi*np.cumsum(f*vib)/SR
+            s_=np.sin(ph)+.35*np.sin(2*ph)+.15*np.sin(3*ph)+.06*np.sin(4*ph)
+            return lp(s_*env(len(t),int(.06*SR),int(.12*SR)),3200)
+        for b in range(int(dur/bar)+2):
+            r,ch=prog[b%4]; t0=b*bar
+            st(L,R,t0,bass(midi(r-12),beat*0.9),.5); st(L,R,t0+2*beat,bass(midi(r-5),beat*0.9),.45)
+            for k in (1,3):
+                for j,nn in enumerate(ch): st(L,R,t0+k*beat+j*0.008,ks(midi(nn),beat*0.5,0.985,3),.13,pan=-.35)
+            roll=[ch[1]+12,ch[2]+12,ch[3]+12,ch[2]+12,ch[1]+12,ch[3]+12,ch[2]+12,ch[3]+12]
+            for k,nn in enumerate(roll):
+                tt=t0+(k//2)*beat+(sw*beat if k%2 else 0)
+                st(L,R,tt,pluck(midi(nn),beat*0.6,9),.13,pan=.35)
+            for k in range(4):
+                st(L,R,t0+k*beat+0.01,fiddle(midi(fid[(b%4)*4+k]),beat*0.98),.16,pan=.05)
+            for k in (0,2): st(L,R,t0+k*beat,kick(.6))
+            for k in (1,3): st(L,R,t0+k*beat,snare(.12,170))
+        return finish(L[:int(dur*SR)],R[:int(dur*SR)],dur,.18,9000)
 style,dur,out=A.style,A.dur,A.out
 x=song(style,dur); w=wave.open(out,'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)
 w.writeframes((np.clip(x,-1,1)*32767).astype('<i2').tobytes()); w.close()
