@@ -1,13 +1,13 @@
 """SignMyRoom reel music generator (all synthesized = royalty-free, safe for paid ads).
 Usage: python3 tools/musicgen.py <lofi|ukulele|tropical|funk|folk> <seconds> out.wav [--transpose N] [--tempo X] [--seed N]
 Then mux: measure ebur128, volume to -14 LUFS, alimiter=limit=0.84:level=false, AAC 192k stereo.
-Mike approved all 5 styles 2026-09-30. 'country' (barnyard two-step: boom-chick bass, swung banjo rolls, soft fiddle) added 2026-10-01."""
+Mike approved all 5 styles 2026-09-30. 'country' (barnyard two-step) added 2026-10-01. 'stadium' (Friday-night marching stomp-clap anthem: brass stabs, horn melody, snare rolls) added 2026-10-02."""
 import numpy as np, sys, wave
 from scipy.signal import butter, sosfilt, fftconvolve
 SR=44100
 import argparse
 ap=argparse.ArgumentParser(description='SignMyRoom royalty-free reel music generator')
-ap.add_argument('style',choices=['lofi','ukulele','tropical','funk','folk','country']);ap.add_argument('dur',type=float);ap.add_argument('out')
+ap.add_argument('style',choices=['lofi','ukulele','tropical','funk','folk','country','stadium']);ap.add_argument('dur',type=float);ap.add_argument('out')
 ap.add_argument('--transpose',type=int,default=0,help='semitones, -5..+5');ap.add_argument('--tempo',type=float,default=1.0,help='tempo multiplier 0.9..1.1');ap.add_argument('--seed',type=int,default=7)
 A=ap.parse_args();TR=A.transpose;BPMX=A.tempo
 rng=np.random.default_rng(A.seed)
@@ -165,6 +165,34 @@ def song(style,dur):
             for k in (0,2): st(L,R,t0+k*beat,kick(.6))
             for k in (1,3): st(L,R,t0+k*beat,snare(.12,170))
         return finish(L[:int(dur*SR)],R[:int(dur*SR)],dur,.18,9000)
+    if style=='stadium':
+        bpm=126*BPMX; beat=60/bpm; bar=4*beat
+        prog=[(48,[60,64,67,72]),(53,[60,65,69,72]),(55,[59,62,67,74]),(48,[60,64,67,72])] # C F G C anthem
+        def brass(f,d):
+            t=T(d); vib=1+0.004*np.sin(2*np.pi*5.0*t)*np.clip(t*4,0,1); ph=2*np.pi*np.cumsum(f*vib)/SR
+            s_=np.sin(ph)+.45*np.sin(2*ph)+.28*np.sin(3*ph)+.14*np.sin(4*ph)+.06*np.sin(5*ph)
+            return lp(s_*env(len(t),int(.035*SR),int(.09*SR)),3600)
+        line=[72,72,74,76, 76,74,72,0, 69,71,72,74, 72,0,67,0]
+        for b in range(int(dur/bar)+2):
+            r,ch=prog[b%4]; t0=b*bar
+            # stomp-clap anthem floor
+            for k in (0,0.5,2,2.5): st(L,R,t0+k*beat,kick(.62))
+            for k in (1,3): st(L,R,t0+k*beat,clap(.6)); st(L,R,t0+k*beat+0.012,snare(.22,205))
+            # low brass/bass root-fifth
+            st(L,R,t0,bass(midi(r-12),beat*1.5,0.25),.34); st(L,R,t0+2*beat,bass(midi(r-5),beat*1.3,0.2),.28)
+            # horn-section stabs on the off-beats
+            for k in (1.5,3.5):
+                for j,nn in enumerate(ch): st(L,R,t0+k*beat+j*0.007,brass(midi(nn),beat*0.45),.17,pan=(j-1.5)*.18)
+            # melody line
+            for k in range(4):
+                m=line[(b%4)*4+k]
+                if m: st(L,R,t0+k*beat+0.01,brass(midi(m+12),beat*0.9),.21,pan=.1)
+            # sustaining pad under it
+            st(L,R,t0,pad([midi(x) for x in ch],bar*0.98),.16,-.15)
+            # snare roll into every 4th bar
+            if b%4==3:
+                for k in range(8): st(L,R,t0+3*beat+k*beat/8,snare(.05+0.035*k,230),pan=-.2)
+        return finish(L[:int(dur*SR)],R[:int(dur*SR)],dur,.16,9800)
 style,dur,out=A.style,A.dur,A.out
 x=song(style,dur); w=wave.open(out,'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)
 w.writeframes((np.clip(x,-1,1)*32767).astype('<i2').tobytes()); w.close()
