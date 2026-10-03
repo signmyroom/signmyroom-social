@@ -1,13 +1,13 @@
 """SignMyRoom reel music generator (all synthesized = royalty-free, safe for paid ads).
 Usage: python3 tools/musicgen.py <lofi|ukulele|tropical|funk|folk> <seconds> out.wav [--transpose N] [--tempo X] [--seed N]
 Then mux: measure ebur128, volume to -14 LUFS, alimiter=limit=0.84:level=false, AAC 192k stereo.
-Mike approved all 5 styles 2026-09-30. 'country' (barnyard two-step) added 2026-10-01. 'stadium' (Friday-night marching stomp-clap anthem: brass stabs, horn melody, snare rolls) added 2026-10-02."""
+Mike approved all 5 styles 2026-09-30. 'country' (barnyard two-step) added 2026-10-01. 'stadium' (Friday-night marching stomp-clap anthem: brass stabs, horn melody, snare rolls) added 2026-10-02. 'bounce' (comedy marimba bounce: ragtime turnaround C-A7-Dm7-G7, staccato marimba hook, pizzicato bass, woodblock, soft brushes) added 2026-10-03."""
 import numpy as np, sys, wave
 from scipy.signal import butter, sosfilt, fftconvolve
 SR=44100
 import argparse
 ap=argparse.ArgumentParser(description='SignMyRoom royalty-free reel music generator')
-ap.add_argument('style',choices=['lofi','ukulele','tropical','funk','folk','country','stadium']);ap.add_argument('dur',type=float);ap.add_argument('out')
+ap.add_argument('style',choices=['lofi','ukulele','tropical','funk','folk','country','stadium','bounce']);ap.add_argument('dur',type=float);ap.add_argument('out')
 ap.add_argument('--transpose',type=int,default=0,help='semitones, -5..+5');ap.add_argument('--tempo',type=float,default=1.0,help='tempo multiplier 0.9..1.1');ap.add_argument('--seed',type=int,default=7)
 A=ap.parse_args();TR=A.transpose;BPMX=A.tempo
 rng=np.random.default_rng(A.seed)
@@ -193,6 +193,38 @@ def song(style,dur):
             if b%4==3:
                 for k in range(8): st(L,R,t0+3*beat+k*beat/8,snare(.05+0.035*k,230),pan=-.2)
         return finish(L[:int(dur*SR)],R[:int(dur*SR)],dur,.16,9800)
+    if style=='bounce':
+        bpm=124*BPMX; beat=60/bpm; bar=4*beat
+        prog=[(48,[64,67,72]),(45,[61,64,67]),(50,[65,69,72]),(43,[65,67,71])] # C A7 Dm7 G7 ragtime turnaround
+        def marimba(f,d):
+            t=T(d); s_=np.sin(2*np.pi*f*t)*np.exp(-t*7)+.35*np.sin(2*np.pi*f*3.93*t)*np.exp(-t*28)+.08*np.sin(2*np.pi*f*9.2*t)*np.exp(-t*60)
+            return s_*env(len(t),int(.004*SR),int(.06*SR))
+        def pizz(f,d):
+            t=T(d); return (np.sin(2*np.pi*f*t)+.3*np.sin(4*np.pi*f*t))*np.exp(-t*9)*env(len(t),int(.006*SR),int(.05*SR))
+        def wood(g=1,f=1150):
+            t=T(.06); return g*np.sin(2*np.pi*f*t)*np.exp(-t*90)*env(len(t),20,200)
+        def brush(g=1):
+            t=T(.18); return g*bp(rng.normal(0,1,len(t)),700,3200)*np.exp(-t*18)*env(len(t),int(.02*SR),int(.05*SR))
+        hook=[76,0,79,76, 73,0,76,73, 74,77,81,77, 79,0,74,71]
+        for b in range(int(dur/bar)+2):
+            r,ch=prog[b%4]; t0=b*bar
+            # oom-pah pizzicato bass: root on 1, fifth on 3
+            st(L,R,t0,pizz(midi(r-12),beat*0.9),.40); st(L,R,t0+2*beat,pizz(midi(r-5),beat*0.9),.32)
+            # marimba chord taps on 2 and 4 (the "pah")
+            for k in (1,3):
+                for j,nn in enumerate(ch): st(L,R,t0+k*beat+j*0.004,marimba(midi(nn),beat*0.6),.16,pan=-.25)
+            # bouncy staccato marimba hook in eighths, with a grace note on the first of each bar
+            for k in range(4):
+                m=hook[(b%4)*4+k]
+                if m:
+                    if k==0: st(L,R,t0-0.045,marimba(midi(m-1),0.05),.12,pan=.25)
+                    st(L,R,t0+k*beat,marimba(midi(m),beat*0.7),.32,pan=.25)
+                    if k%2==1: st(L,R,t0+k*beat+beat/2,marimba(midi(m+(2 if b%2 else -3)),beat*0.4),.2,pan=.25)
+            # soft kick, brushes, woodblock clip-clop
+            for k in (0,2): st(L,R,t0+k*beat,kick(.34))
+            for k in (1,3): st(L,R,t0+k*beat,brush(.22),pan=-.1)
+            for k in (0.5,1.5,2.5,3.5): st(L,R,t0+k*beat,wood(.09,1150 if k<2 else 900),pan=.35)
+        return finish(L[:int(dur*SR)],R[:int(dur*SR)],dur,.14,9000)
 style,dur,out=A.style,A.dur,A.out
 x=song(style,dur); w=wave.open(out,'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)
 w.writeframes((np.clip(x,-1,1)*32767).astype('<i2').tobytes()); w.close()
