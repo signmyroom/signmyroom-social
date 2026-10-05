@@ -1,13 +1,13 @@
 """SignMyRoom reel music generator (all synthesized = royalty-free, safe for paid ads).
 Usage: python3 tools/musicgen.py <lofi|ukulele|tropical|funk|folk> <seconds> out.wav [--transpose N] [--tempo X] [--seed N]
 Then mux: measure ebur128, volume to -14 LUFS, alimiter=limit=0.84:level=false, AAC 192k stereo.
-Mike approved all 5 styles 2026-09-30. 'country' (barnyard two-step) added 2026-10-01. 'stadium' (Friday-night marching stomp-clap anthem: brass stabs, horn melody, snare rolls) added 2026-10-02. 'bounce' (comedy marimba bounce: ragtime turnaround C-A7-Dm7-G7, staccato marimba hook, pizzicato bass, woodblock, soft brushes) added 2026-10-03."""
+Mike approved all 5 styles 2026-09-30. 'country' (barnyard two-step) added 2026-10-01. 'stadium' (Friday-night marching stomp-clap anthem: brass stabs, horn melody, snare rolls) added 2026-10-02. 'bounce' (comedy marimba bounce: ragtime turnaround C-A7-Dm7-G7, staccato marimba hook, pizzicato bass, woodblock, soft brushes) added 2026-10-03. 'cumbia' (taco-night cumbia: Am-Dm-E-Am, root/fifth bass with pickups, off-beat guitar chops, detuned accordion melody, sine-click guiro, congas) added 2026-10-05."""
 import numpy as np, sys, wave
 from scipy.signal import butter, sosfilt, fftconvolve
 SR=44100
 import argparse
 ap=argparse.ArgumentParser(description='SignMyRoom royalty-free reel music generator')
-ap.add_argument('style',choices=['lofi','ukulele','tropical','funk','folk','country','stadium','bounce']);ap.add_argument('dur',type=float);ap.add_argument('out')
+ap.add_argument('style',choices=['lofi','ukulele','tropical','funk','folk','country','stadium','bounce','cumbia']);ap.add_argument('dur',type=float);ap.add_argument('out')
 ap.add_argument('--transpose',type=int,default=0,help='semitones, -5..+5');ap.add_argument('--tempo',type=float,default=1.0,help='tempo multiplier 0.9..1.1');ap.add_argument('--seed',type=int,default=7)
 A=ap.parse_args();TR=A.transpose;BPMX=A.tempo
 rng=np.random.default_rng(A.seed)
@@ -225,6 +225,42 @@ def song(style,dur):
             for k in (1,3): st(L,R,t0+k*beat,brush(.22),pan=-.1)
             for k in (0.5,1.5,2.5,3.5): st(L,R,t0+k*beat,wood(.09,1150 if k<2 else 900),pan=.35)
         return finish(L[:int(dur*SR)],R[:int(dur*SR)],dur,.14,9000)
+    if style=='cumbia':
+        bpm=96*BPMX; beat=60/bpm; bar=4*beat
+        prog=[(45,[57,60,64]),(50,[57,62,65]),(52,[56,59,64]),(45,[57,60,64])] # Am Dm E Am
+        def accordion(f,d):
+            t=T(d); vib=1+0.003*np.sin(2*np.pi*6.0*t)
+            s_=np.zeros(len(t))
+            for dt in (-0.0025,0.0025):
+                ph=2*np.pi*np.cumsum(f*(1+dt)*vib)/SR
+                s_+=np.sin(ph)+.5*np.sin(2*ph)+.33*np.sin(3*ph)+.2*np.sin(4*ph)+.1*np.sin(5*ph)
+            return lp(s_*env(len(t),int(.03*SR),int(.08*SR)),3000)/2
+        def conga(f,g=1):
+            t=T(.22); return g*np.sin(2*np.pi*f*(1+0.25*np.exp(-t*60))*t)*np.exp(-t*16)*env(len(t),30,300)
+        def guiro(g=1,d=.11):
+            t=T(d); clicks=np.zeros(len(t)); step=int(SR/170)
+            for i in range(0,len(t)-200,step): clicks[i:i+200]+=np.sin(2*np.pi*2100*T(200/SR))*np.exp(-T(200/SR)*900)
+            return g*lp(clicks,3800)*env(len(t),int(.01*SR),int(.03*SR))
+        mel=[76,74,72,74, 77,76,74,72, 71,72,74,76, 72,71,69,0]
+        for b in range(int(dur/bar)+2):
+            r,ch=prog[b%4]; t0=b*bar
+            # cumbia bass: root on 1, fifth on 3, pickup into each
+            st(L,R,t0,bass(midi(r-12),beat*0.9,0.2),.34); st(L,R,t0+2*beat,bass(midi(r-5),beat*0.9,0.2),.30)
+            st(L,R,t0+1.5*beat,bass(midi(r-12+12-5),beat*0.4,0.2),.18); st(L,R,t0+3.5*beat,bass(midi(r-12),beat*0.4,0.2),.18)
+            # off-beat guitar chops
+            for k in (0.5,1.5,2.5,3.5):
+                for j,nn in enumerate(ch): st(L,R,t0+k*beat+j*0.005,bp(ks(midi(nn+12),beat*0.3,0.98,3),350,3200),.5,pan=-.35)
+            # accordion melody
+            for k in range(4):
+                m=mel[(b%4)*4+k]
+                if m: st(L,R,t0+k*beat+0.01,accordion(midi(m),beat*0.85),.19,pan=.2)
+            if b%2==1:
+                for k in (0,1): st(L,R,t0+3*beat+k*beat/2,accordion(midi(ch[-1]+12),beat*0.4),.12,pan=.2)
+            # guiro scrape (long-short-short) and congas
+            for k in range(4): st(L,R,t0+k*beat,guiro(.16,.13)); st(L,R,t0+k*beat+0.5*beat,guiro(.1,.06),pan=.4)
+            for k,f_ in ((0.5,330),(1.5,250),(2.5,330),(3,250),(3.5,250)): st(L,R,t0+k*beat,conga(f_,.22),pan=-.2)
+            for k in (0,2): st(L,R,t0+k*beat,kick(.42))
+        return finish(L[:int(dur*SR)],R[:int(dur*SR)],dur,.15,9000)
 style,dur,out=A.style,A.dur,A.out
 x=song(style,dur); w=wave.open(out,'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)
 w.writeframes((np.clip(x,-1,1)*32767).astype('<i2').tobytes()); w.close()
