@@ -1,13 +1,13 @@
 """SignMyRoom reel music generator (all synthesized = royalty-free, safe for paid ads).
 Usage: python3 tools/musicgen.py <lofi|ukulele|tropical|funk|folk> <seconds> out.wav [--transpose N] [--tempo X] [--seed N]
 Then mux: measure ebur128, volume to -14 LUFS, alimiter=limit=0.84:level=false, AAC 192k stereo.
-Mike approved all 5 styles 2026-09-30. 'country' (barnyard two-step) added 2026-10-01. 'stadium' (Friday-night marching stomp-clap anthem: brass stabs, horn melody, snare rolls) added 2026-10-02. 'bounce' (comedy marimba bounce: ragtime turnaround C-A7-Dm7-G7, staccato marimba hook, pizzicato bass, woodblock, soft brushes) added 2026-10-03. 'cumbia' (taco-night cumbia: Am-Dm-E-Am, root/fifth bass with pickups, off-beat guitar chops, detuned accordion melody, sine-click guiro, congas) added 2026-10-05."""
+Mike approved all 5 styles 2026-09-30. 'country' (barnyard two-step) added 2026-10-01. 'stadium' (Friday-night marching stomp-clap anthem: brass stabs, horn melody, snare rolls) added 2026-10-02. 'bounce' (comedy marimba bounce: ragtime turnaround C-A7-Dm7-G7, staccato marimba hook, pizzicato bass, woodblock, soft brushes) added 2026-10-03. 'cumbia' (taco-night cumbia: Am-Dm-E-Am, root/fifth bass with pickups, off-beat guitar chops, detuned accordion melody, sine-click guiro, congas) added 2026-10-05. 'spooky' (playful Halloween monster swing: Dm-Bb7-A7-Dm walking pizzicato bass, organ stabs on 2/4, swung celesta hook, theremin-style sine woo every 4th bar, sine finger snaps, no noise) added 2026-10-07."""
 import numpy as np, sys, wave
 from scipy.signal import butter, sosfilt, fftconvolve
 SR=44100
 import argparse
 ap=argparse.ArgumentParser(description='SignMyRoom royalty-free reel music generator')
-ap.add_argument('style',choices=['lofi','ukulele','tropical','funk','folk','country','stadium','bounce','cumbia']);ap.add_argument('dur',type=float);ap.add_argument('out')
+ap.add_argument('style',choices=['lofi','ukulele','tropical','funk','folk','country','stadium','bounce','cumbia','spooky']);ap.add_argument('dur',type=float);ap.add_argument('out')
 ap.add_argument('--transpose',type=int,default=0,help='semitones, -5..+5');ap.add_argument('--tempo',type=float,default=1.0,help='tempo multiplier 0.9..1.1');ap.add_argument('--seed',type=int,default=7)
 A=ap.parse_args();TR=A.transpose;BPMX=A.tempo
 rng=np.random.default_rng(A.seed)
@@ -261,6 +261,39 @@ def song(style,dur):
             for k,f_ in ((0.5,330),(1.5,250),(2.5,330),(3,250),(3.5,250)): st(L,R,t0+k*beat,conga(f_,.22),pan=-.2)
             for k in (0,2): st(L,R,t0+k*beat,kick(.42))
         return finish(L[:int(dur*SR)],R[:int(dur*SR)],dur,.15,9000)
+    if style=='spooky':
+        bpm=128*BPMX; beat=60/bpm; bar=4*beat; sw=0.64  # swung "monster swing", Dm Bb7 A7 Dm
+        prog=[(50,[62,65,69]),(46,[62,65,68]),(45,[61,64,67]),(50,[62,65,69])]
+        walk=[[50,53,57,56],[46,50,53,52],[45,49,52,49],[50,57,53,50]]
+        def organ(f,d):
+            t=T(d); vib=1+0.0025*np.sin(2*np.pi*6.2*t)
+            s_=sum(a*np.sin(2*np.pi*f*h*vib*t) for h,a in ((1,1),(2,.5),(3,.25),(4,.12)))
+            return s_*env(len(t),int(.03*SR),int(.07*SR))/1.9
+        def celesta(f,d):
+            t=T(d); s_=np.sin(2*np.pi*f*t)*np.exp(-t*4)+.3*np.sin(2*np.pi*f*4.01*t)*np.exp(-t*14)+.1*np.sin(2*np.pi*f*2*t)*np.exp(-t*9)
+            return s_*env(len(t),int(.005*SR),int(.08*SR))
+        def theremin(f,d):
+            t=T(d); vib=1+0.012*np.sin(2*np.pi*5.2*t)*np.clip(t*2.5,0,1)
+            ph=2*np.pi*np.cumsum(f*vib)/SR; return (np.sin(ph)+.12*np.sin(2*ph))*env(len(t),int(.09*SR),int(.15*SR))
+        def snap(g=1):
+            t=T(.05); return g*(np.sin(2*np.pi*1800*t)+.6*np.sin(2*np.pi*2650*t))*np.exp(-t*140)*env(len(t),15,150)
+        def pizz(f,d):
+            t=T(d); return (np.sin(2*np.pi*f*t)+.35*np.sin(4*np.pi*f*t)+.1*np.sin(6*np.pi*f*t))*np.exp(-t*6)*env(len(t),int(.008*SR),int(.05*SR))
+        hook=[74,77,76,74, 73,74,70,0, 73,76,79,76, 74,0,69,0]
+        for b in range(int(dur/bar)+2):
+            r,ch=prog[b%4]; t0=b*bar
+            for k,nn in enumerate(walk[b%4]): st(L,R,t0+k*beat,pizz(midi(nn-12),beat*0.95),.20)
+            for k in (1,3):  # organ chord stabs on 2 and 4
+                for j,nn in enumerate(ch): st(L,R,t0+k*beat+j*0.004,organ(midi(nn),beat*0.55),.14,pan=-.3)
+            for k in range(4):  # swung celesta hook
+                m=hook[(b%4)*4+k]
+                if m:
+                    st(L,R,t0+k*beat,celesta(midi(m+12),beat*0.9),.28,pan=.3)
+                    if k%2==0: st(L,R,t0+k*beat+sw*beat,celesta(midi(m+12-(3 if b%2 else 1)),beat*0.5),.13,pan=.3)
+            if b%4==3: st(L,R,t0+0.02,theremin(midi(81),bar*0.9),.10,pan=-.1)  # spooky woo-oo every 4th bar
+            for k in (1,3): st(L,R,t0+k*beat,snap(.14),pan=.15)
+            for k in (0,2): st(L,R,t0+k*beat,kick(.22))
+        return finish(L[:int(dur*SR)],R[:int(dur*SR)],dur,.2,8500)
 style,dur,out=A.style,A.dur,A.out
 x=song(style,dur); w=wave.open(out,'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)
 w.writeframes((np.clip(x,-1,1)*32767).astype('<i2').tobytes()); w.close()
