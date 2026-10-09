@@ -1,13 +1,13 @@
 """SignMyRoom reel music generator (all synthesized = royalty-free, safe for paid ads).
 Usage: python3 tools/musicgen.py <lofi|ukulele|tropical|funk|folk> <seconds> out.wav [--transpose N] [--tempo X] [--seed N]
 Then mux: measure ebur128, volume to -14 LUFS, alimiter=limit=0.84:level=false, AAC 192k stereo.
-Mike approved all 5 styles 2026-09-30. 'country' (barnyard two-step) added 2026-10-01. 'stadium' (Friday-night marching stomp-clap anthem: brass stabs, horn melody, snare rolls) added 2026-10-02. 'bounce' (comedy marimba bounce: ragtime turnaround C-A7-Dm7-G7, staccato marimba hook, pizzicato bass, woodblock, soft brushes) added 2026-10-03. 'cumbia' (taco-night cumbia: Am-Dm-E-Am, root/fifth bass with pickups, off-beat guitar chops, detuned accordion melody, sine-click guiro, congas) added 2026-10-05. 'spooky' (playful Halloween monster swing: Dm-Bb7-A7-Dm walking pizzicato bass, organ stabs on 2/4, swung celesta hook, theremin-style sine woo every 4th bar, sine finger snaps, no noise) added 2026-10-07."""
+Mike approved all 5 styles 2026-09-30. 'country' (barnyard two-step) added 2026-10-01. 'stadium' (Friday-night marching stomp-clap anthem: brass stabs, horn melody, snare rolls) added 2026-10-02. 'bounce' (comedy marimba bounce: ragtime turnaround C-A7-Dm7-G7, staccato marimba hook, pizzicato bass, woodblock, soft brushes) added 2026-10-03. 'cumbia' (taco-night cumbia: Am-Dm-E-Am, root/fifth bass with pickups, off-beat guitar chops, detuned accordion melody, sine-click guiro, congas) added 2026-10-05. 'spooky' (playful Halloween monster swing: Dm-Bb7-A7-Dm walking pizzicato bass, organ stabs on 2/4, swung celesta hook, theremin-style sine woo every 4th bar, sine finger snaps, no noise) added 2026-10-07. 'bossa' (coffeehouse bossa nova: Dm9-G13-Cmaj9-A7b9 ii-V-I-VI, soft nylon-guitar comping in the 3-3-2 bossa clave, dotted root-fifth bass, breathy sine flute melody with vibrato, sine rim-clicks, soft kick, no noise) added 2026-10-09."""
 import numpy as np, sys, wave
 from scipy.signal import butter, sosfilt, fftconvolve
 SR=44100
 import argparse
 ap=argparse.ArgumentParser(description='SignMyRoom royalty-free reel music generator')
-ap.add_argument('style',choices=['lofi','ukulele','tropical','funk','folk','country','stadium','bounce','cumbia','spooky']);ap.add_argument('dur',type=float);ap.add_argument('out')
+ap.add_argument('style',choices=['lofi','ukulele','tropical','funk','folk','country','stadium','bounce','cumbia','spooky','bossa']);ap.add_argument('dur',type=float);ap.add_argument('out')
 ap.add_argument('--transpose',type=int,default=0,help='semitones, -5..+5');ap.add_argument('--tempo',type=float,default=1.0,help='tempo multiplier 0.9..1.1');ap.add_argument('--seed',type=int,default=7)
 A=ap.parse_args();TR=A.transpose;BPMX=A.tempo
 rng=np.random.default_rng(A.seed)
@@ -294,6 +294,31 @@ def song(style,dur):
             for k in (1,3): st(L,R,t0+k*beat,snap(.14),pan=.15)
             for k in (0,2): st(L,R,t0+k*beat,kick(.22))
         return finish(L[:int(dur*SR)],R[:int(dur*SR)],dur,.2,8500)
+    if style=='bossa':
+        bpm=132*BPMX; beat=60/bpm; bar=4*beat  # felt in 2, eighth-note comping
+        prog=[(50,[60,65,69,76]),(43,[59,64,65,69]),(48,[59,62,64,67]),(45,[55,58,61,67])] # Dm9 G13 Cmaj9 A7b9 (rootless voicings)
+        def nylon(f,d): return lp(ks(f,d,0.995,6),2600)
+        def flute(f,d):
+            t=T(d); vib=1+0.005*np.sin(2*np.pi*5.0*t)*np.clip(t*2,0,1); ph=2*np.pi*np.cumsum(f*vib)/SR
+            return (np.sin(ph)+.18*np.sin(2*ph)+.05*np.sin(3*ph))*env(len(t),int(.07*SR),int(.12*SR))
+        def rim(g=1):
+            t=T(.04); return g*(np.sin(2*np.pi*1650*t)+.5*np.sin(2*np.pi*2400*t))*np.exp(-t*170)*env(len(t),10,120)
+        clave=[0,1.5,3, 1,2.5]  # 2-bar comping hits (bar A: 0,1.5,3 ; bar B: 1,2.5)
+        mel=[76,0,74,72, 74,0,71,0, 71,72,74,76, 73,0,70,0]
+        for b in range(int(dur/bar)+2):
+            r,ch=prog[b%4]; t0=b*bar
+            st(L,R,t0,bass(midi(r-12),beat*1.4),.36); st(L,R,t0+1.5*beat,bass(midi(r-5),beat*0.45),.22)
+            st(L,R,t0+2*beat,bass(midi(r-5),beat*1.4),.32); st(L,R,t0+3.5*beat,bass(midi(r-12),beat*0.45),.2)
+            hits=clave[:3] if b%2==0 else clave[3:]
+            for k in hits:
+                for j,nn in enumerate(ch): st(L,R,t0+k*beat+j*0.01,nylon(midi(nn),beat*1.3),.2,pan=-.3)
+            for k in range(4):
+                m=mel[(b%4)*4+k]
+                if m: st(L,R,t0+k*beat+0.02,flute(midi(m+12),beat*(1.7 if mel[(b%4)*4+(k+1)%4]==0 else 0.95)),.14,pan=.25)
+            for k in (0,1.5,2,3.5): st(L,R,t0+k*beat,kick(.26 if k in (0,2) else .16))
+            for k in ((0.5,1.75,3) if b%2==0 else (0.75,2,3.25)): st(L,R,t0+k*beat,rim(.11),pan=.2)
+            st(L,R,t0,pad([midi(x) for x in ch],bar*0.98),.07,.1)
+        return finish(L[:int(dur*SR)],R[:int(dur*SR)],dur,.24,8200)
 style,dur,out=A.style,A.dur,A.out
 x=song(style,dur); w=wave.open(out,'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)
 w.writeframes((np.clip(x,-1,1)*32767).astype('<i2').tobytes()); w.close()
