@@ -1,13 +1,13 @@
 """SignMyRoom reel music generator (all synthesized = royalty-free, safe for paid ads).
 Usage: python3 tools/musicgen.py <lofi|ukulele|tropical|funk|folk> <seconds> out.wav [--transpose N] [--tempo X] [--seed N]
 Then mux: measure ebur128, volume to -14 LUFS, alimiter=limit=0.84:level=false, AAC 192k stereo.
-Mike approved all 5 styles 2026-09-30. 'country' (barnyard two-step) added 2026-10-01. 'stadium' (Friday-night marching stomp-clap anthem: brass stabs, horn melody, snare rolls) added 2026-10-02. 'bounce' (comedy marimba bounce: ragtime turnaround C-A7-Dm7-G7, staccato marimba hook, pizzicato bass, woodblock, soft brushes) added 2026-10-03. 'cumbia' (taco-night cumbia: Am-Dm-E-Am, root/fifth bass with pickups, off-beat guitar chops, detuned accordion melody, sine-click guiro, congas) added 2026-10-05. 'spooky' (playful Halloween monster swing: Dm-Bb7-A7-Dm walking pizzicato bass, organ stabs on 2/4, swung celesta hook, theremin-style sine woo every 4th bar, sine finger snaps, no noise) added 2026-10-07. 'bossa' (coffeehouse bossa nova: Dm9-G13-Cmaj9-A7b9 ii-V-I-VI, soft nylon-guitar comping in the 3-3-2 bossa clave, dotted root-fifth bass, breathy sine flute melody with vibrato, sine rim-clicks, soft kick, no noise) added 2026-10-09. 'reggae' (laid-back one-drop: C-Am-F-G, root-fifth-octave bass with rests, offbeat lowpassed guitar chops, organ bubble, soft melodica melody, kick+rim on beat 3, no noise) added 2026-10-13."""
+Mike approved all 5 styles 2026-09-30. 'country' (barnyard two-step) added 2026-10-01. 'stadium' (Friday-night marching stomp-clap anthem: brass stabs, horn melody, snare rolls) added 2026-10-02. 'bounce' (comedy marimba bounce: ragtime turnaround C-A7-Dm7-G7, staccato marimba hook, pizzicato bass, woodblock, soft brushes) added 2026-10-03. 'cumbia' (taco-night cumbia: Am-Dm-E-Am, root/fifth bass with pickups, off-beat guitar chops, detuned accordion melody, sine-click guiro, congas) added 2026-10-05. 'spooky' (playful Halloween monster swing: Dm-Bb7-A7-Dm walking pizzicato bass, organ stabs on 2/4, swung celesta hook, theremin-style sine woo every 4th bar, sine finger snaps, no noise) added 2026-10-07. 'bossa' (coffeehouse bossa nova: Dm9-G13-Cmaj9-A7b9 ii-V-I-VI, soft nylon-guitar comping in the 3-3-2 bossa clave, dotted root-fifth bass, breathy sine flute melody with vibrato, sine rim-clicks, soft kick, no noise) added 2026-10-09. 'reggae' (laid-back one-drop: C-Am-F-G, root-fifth-octave bass with rests, offbeat lowpassed guitar chops, organ bubble, soft melodica melody, kick+rim on beat 3, no noise) added 2026-10-13. 'grumpy' (grumpy-old-man oompah waltz in 3/4: G7-C-F progression, lowpassed tuba on 1, soft reed chord puffs on 2-3, bassoon melody with gentle vibrato, woodblock, soft kick, no noise) added 2026-10-14 for National Grouch Day."""
 import numpy as np, sys, wave
 from scipy.signal import butter, sosfilt, fftconvolve
 SR=44100
 import argparse
 ap=argparse.ArgumentParser(description='SignMyRoom royalty-free reel music generator')
-ap.add_argument('style',choices=['lofi','ukulele','tropical','funk','folk','country','stadium','bounce','cumbia','spooky','bossa','reggae']);ap.add_argument('dur',type=float);ap.add_argument('out')
+ap.add_argument('style',choices=['lofi','ukulele','tropical','funk','folk','country','stadium','bounce','cumbia','spooky','bossa','reggae','grumpy']);ap.add_argument('dur',type=float);ap.add_argument('out')
 ap.add_argument('--transpose',type=int,default=0,help='semitones, -5..+5');ap.add_argument('--tempo',type=float,default=1.0,help='tempo multiplier 0.9..1.1');ap.add_argument('--seed',type=int,default=7)
 A=ap.parse_args();TR=A.transpose;BPMX=A.tempo
 rng=np.random.default_rng(A.seed)
@@ -346,6 +346,35 @@ def song(style,dur):
             st(L,R,t0+2*beat,kick(.34)); st(L,R,t0+2*beat,rimc(.16),pan=.15)
             for k in (0.5,1.5,2.5,3.5): st(L,R,t0+k*beat,rimc(.05),pan=-.15)
         return finish(L[:int(dur*SR)],R[:int(dur*SR)],dur,.22,7800)
+    if style=='grumpy':
+        bpm=132*BPMX; beat=60/bpm; bar=3*beat  # grumpy-old-man oompah waltz in 3/4: tuba on 1, muted-brass/clarinet chords on 2-3, bassoon melody
+        prog=[(43,[59,62,65]),(48,[60,64,67]),(43,[59,62,65]),(48,[60,64,67]),(41,[57,60,65]),(48,[60,64,67]),(43,[59,62,65]),(48,[60,64,67])] # G7 C G7 C F C G7 C
+        def tuba(f,d):
+            t=T(d); s_=np.sin(2*np.pi*f*t)+.5*np.sin(4*np.pi*f*t)+.22*np.sin(6*np.pi*f*t)+.08*np.sin(8*np.pi*f*t)
+            return lp(s_,900)*np.exp(-t*2.2)*env(len(t),int(.03*SR),int(.08*SR))
+        def reed(f,d):
+            t=T(d); s_=sum(a*np.sin(2*np.pi*f*h*t) for h,a in ((1,1),(3,.32),(5,.12),(7,.04)))
+            return lp(s_,2600)*np.exp(-t*6)*env(len(t),int(.015*SR),int(.05*SR))
+        def bassoon(f,d):
+            t=T(d); vib=1+0.004*np.sin(2*np.pi*5*t)*np.clip(t*2-0.3,0,1); ph=2*np.pi*np.cumsum(f*vib)/SR
+            s_=np.sin(ph)+.55*np.sin(2*ph)+.35*np.sin(3*ph)+.15*np.sin(4*ph)
+            return lp(s_,1900)*env(len(t),int(.04*SR),int(.09*SR))
+        def wood(g=1):
+            t=T(.05); return g*(np.sin(2*np.pi*950*t)+.4*np.sin(2*np.pi*1420*t))*np.exp(-t*120)*env(len(t),10,120)
+        mel=[62,0,0, 65,64,62, 60,0,0, 0,0,55, 57,59,60, 62,0,60, 59,0,0, 0,0,0]  # 8 bars, grumbling phrase
+        for b in range(int(dur/bar)+2):
+            r,ch=prog[b%8]; t0=b*bar
+            st(L,R,t0,tuba(midi(r-12 if b%2==0 else r-5),beat*0.9),.28)
+            for k in (1,2):
+                for j,nn in enumerate(ch): st(L,R,t0+k*beat+j*0.004,reed(midi(nn),beat*0.38),.10,pan=-.25)
+                st(L,R,t0+k*beat,wood(.06),pan=.3)
+            for k in range(3):
+                m=mel[((b%8)*3+k)%24]
+                if m:
+                    nxt=mel[((b%8)*3+k+1)%24]
+                    st(L,R,t0+k*beat+0.01,bassoon(midi(m),beat*(1.8 if nxt==0 else 0.85)),.24,pan=.2)
+            st(L,R,t0,kick(.15))
+        return finish(L[:int(dur*SR)],R[:int(dur*SR)],dur,.18,7000)
 style,dur,out=A.style,A.dur,A.out
 x=song(style,dur); w=wave.open(out,'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)
 w.writeframes((np.clip(x,-1,1)*32767).astype('<i2').tobytes()); w.close()
