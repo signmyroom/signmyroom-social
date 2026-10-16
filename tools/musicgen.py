@@ -1,13 +1,13 @@
 """SignMyRoom reel music generator (all synthesized = royalty-free, safe for paid ads).
 Usage: python3 tools/musicgen.py <lofi|ukulele|tropical|funk|folk> <seconds> out.wav [--transpose N] [--tempo X] [--seed N]
 Then mux: measure ebur128, volume to -14 LUFS, alimiter=limit=0.84:level=false, AAC 192k stereo.
-Mike approved all 5 styles 2026-09-30. 'country' (barnyard two-step) added 2026-10-01. 'stadium' (Friday-night marching stomp-clap anthem: brass stabs, horn melody, snare rolls) added 2026-10-02. 'bounce' (comedy marimba bounce: ragtime turnaround C-A7-Dm7-G7, staccato marimba hook, pizzicato bass, woodblock, soft brushes) added 2026-10-03. 'cumbia' (taco-night cumbia: Am-Dm-E-Am, root/fifth bass with pickups, off-beat guitar chops, detuned accordion melody, sine-click guiro, congas) added 2026-10-05. 'spooky' (playful Halloween monster swing: Dm-Bb7-A7-Dm walking pizzicato bass, organ stabs on 2/4, swung celesta hook, theremin-style sine woo every 4th bar, sine finger snaps, no noise) added 2026-10-07. 'bossa' (coffeehouse bossa nova: Dm9-G13-Cmaj9-A7b9 ii-V-I-VI, soft nylon-guitar comping in the 3-3-2 bossa clave, dotted root-fifth bass, breathy sine flute melody with vibrato, sine rim-clicks, soft kick, no noise) added 2026-10-09. 'reggae' (laid-back one-drop: C-Am-F-G, root-fifth-octave bass with rests, offbeat lowpassed guitar chops, organ bubble, soft melodica melody, kick+rim on beat 3, no noise) added 2026-10-13. 'grumpy' (grumpy-old-man oompah waltz in 3/4: G7-C-F progression, lowpassed tuba on 1, soft reed chord puffs on 2-3, bassoon melody with gentle vibrato, woodblock, soft kick, no noise) added 2026-10-14 for National Grouch Day."""
+Mike approved all 5 styles 2026-09-30. 'country' (barnyard two-step) added 2026-10-01. 'stadium' (Friday-night marching stomp-clap anthem: brass stabs, horn melody, snare rolls) added 2026-10-02. 'bounce' (comedy marimba bounce: ragtime turnaround C-A7-Dm7-G7, staccato marimba hook, pizzicato bass, woodblock, soft brushes) added 2026-10-03. 'cumbia' (taco-night cumbia: Am-Dm-E-Am, root/fifth bass with pickups, off-beat guitar chops, detuned accordion melody, sine-click guiro, congas) added 2026-10-05. 'spooky' (playful Halloween monster swing: Dm-Bb7-A7-Dm walking pizzicato bass, organ stabs on 2/4, swung celesta hook, theremin-style sine woo every 4th bar, sine finger snaps, no noise) added 2026-10-07. 'bossa' (coffeehouse bossa nova: Dm9-G13-Cmaj9-A7b9 ii-V-I-VI, soft nylon-guitar comping in the 3-3-2 bossa clave, dotted root-fifth bass, breathy sine flute melody with vibrato, sine rim-clicks, soft kick, no noise) added 2026-10-09. 'reggae' (laid-back one-drop: C-Am-F-G, root-fifth-octave bass with rests, offbeat lowpassed guitar chops, organ bubble, soft melodica melody, kick+rim on beat 3, no noise) added 2026-10-13. 'grumpy' (grumpy-old-man oompah waltz in 3/4: G7-C-F progression, lowpassed tuba on 1, soft reed chord puffs on 2-3, bassoon melody with gentle vibrato, woodblock, soft kick, no noise) added 2026-10-14 for National Grouch Day. 'doowop' (50s sweetheart doo-wop ballad in 12/8: C-Am-F-G, piano triplet chords, soft 'ooh' choir pad, breathy sax melody with vibrato, sine rim-clicks on 2 and 4, soft kick, no noise) added 2026-10-16 for Sweetest Day."""
 import numpy as np, sys, wave
 from scipy.signal import butter, sosfilt, fftconvolve
 SR=44100
 import argparse
 ap=argparse.ArgumentParser(description='SignMyRoom royalty-free reel music generator')
-ap.add_argument('style',choices=['lofi','ukulele','tropical','funk','folk','country','stadium','bounce','cumbia','spooky','bossa','reggae','grumpy']);ap.add_argument('dur',type=float);ap.add_argument('out')
+ap.add_argument('style',choices=['lofi','ukulele','tropical','funk','folk','country','stadium','bounce','cumbia','spooky','bossa','reggae','grumpy','doowop']);ap.add_argument('dur',type=float);ap.add_argument('out')
 ap.add_argument('--transpose',type=int,default=0,help='semitones, -5..+5');ap.add_argument('--tempo',type=float,default=1.0,help='tempo multiplier 0.9..1.1');ap.add_argument('--seed',type=int,default=7)
 A=ap.parse_args();TR=A.transpose;BPMX=A.tempo
 rng=np.random.default_rng(A.seed)
@@ -375,6 +375,42 @@ def song(style,dur):
                     st(L,R,t0+k*beat+0.01,bassoon(midi(m),beat*(1.8 if nxt==0 else 0.85)),.24,pan=.2)
             st(L,R,t0,kick(.15))
         return finish(L[:int(dur*SR)],R[:int(dur*SR)],dur,.18,7000)
+    if style=='doowop':
+        bpm=66*BPMX; beat=60/bpm; bar=4*beat  # 50s sweetheart doo-wop ballad in 12/8: I-vi-IV-V, piano triplets, "ooh" choir pad, soft sax melody, rim on 2 and 4
+        prog=[(48,[60,64,67]),(45,[60,64,69]),(41,[60,65,69]),(43,[59,62,67])] # C Am F G
+        def piano(f,d):
+            t=T(d); s_=np.sin(2*np.pi*f*t)+.35*np.sin(4*np.pi*f*t)*np.exp(-t*4)+.12*np.sin(6*np.pi*f*t)*np.exp(-t*7)
+            return lp(s_,3200)*np.exp(-t*2.6)*env(len(t),int(.006*SR),int(.1*SR))
+        def ooh(fs,d):
+            t=T(d); s_=np.zeros(len(t))
+            for f in fs:
+                for dt in (-0.003,0.003):
+                    vib=1+0.003*np.sin(2*np.pi*5.2*t+dt*900); ph=2*np.pi*np.cumsum(f*(1+dt)*vib)/SR
+                    s_+=np.sin(ph)+.25*np.sin(2*ph)+.1*np.sin(3*ph)
+            return lp(s_/len(fs)/2,1800)*env(len(t),int(.35*SR),int(.4*SR))
+        def sax(f,d):
+            t=T(d); vib=1+0.005*np.sin(2*np.pi*5*t)*np.clip(t*2.5-0.4,0,1); ph=2*np.pi*np.cumsum(f*vib)/SR
+            s_=np.sin(ph)+.5*np.sin(2*ph)+.28*np.sin(3*ph)+.12*np.sin(4*ph)
+            return lp(s_,2400)*env(len(t),int(.06*SR),int(.15*SR))
+        def rims(g=1):
+            t=T(.05); return g*(np.sin(2*np.pi*1600*t)+.35*np.sin(2*np.pi*2500*t))*np.exp(-t*140)*env(len(t),10,140)
+        mel=[76,74,72,0, 72,76,79,0, 77,76,74,72, 74,0,71,0]
+        for b in range(int(dur/bar)+2):
+            r,ch=prog[b%4]; t0=b*bar
+            for k in range(12):
+                tt=t0+k*beat/3
+                for j,nn in enumerate(ch): st(L,R,tt+j*0.004,piano(midi(nn),beat*0.6),.085 if k%3 else .11,pan=-.3)
+            st(L,R,t0,ooh([midi(n) for n in ch],bar*1.02),.16,pan=.25)
+            st(L,R,t0,bass(midi(r-12),beat*1.7),.62); st(L,R,t0+2*beat,bass(midi(r-5),beat*1.5),.52)
+            st(L,R,t0+beat*(2+2/3),bass(midi(r-12+(2 if b%4!=3 else -1)),beat*0.4),.34)
+            for k in range(4):
+                m=mel[(b%4)*4+k]
+                if m:
+                    nxt=mel[(b%4)*4+(k+1)%4]
+                    st(L,R,t0+k*beat+0.02,sax(midi(m),beat*(1.85 if nxt==0 else 0.95)),.17,pan=.15)
+            for k in (1,3): st(L,R,t0+k*beat,rims(.12),pan=.1)
+            st(L,R,t0,kick(.3)); st(L,R,t0+2*beat,kick(.2))
+        return finish(L[:int(dur*SR)],R[:int(dur*SR)],dur,.26,7500)
 style,dur,out=A.style,A.dur,A.out
 x=song(style,dur); w=wave.open(out,'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)
 w.writeframes((np.clip(x,-1,1)*32767).astype('<i2').tobytes()); w.close()
