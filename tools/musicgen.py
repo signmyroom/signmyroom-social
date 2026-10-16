@@ -1,13 +1,13 @@
 """SignMyRoom reel music generator (all synthesized = royalty-free, safe for paid ads).
 Usage: python3 tools/musicgen.py <lofi|ukulele|tropical|funk|folk> <seconds> out.wav [--transpose N] [--tempo X] [--seed N]
 Then mux: measure ebur128, volume to -14 LUFS, alimiter=limit=0.84:level=false, AAC 192k stereo.
-Mike approved all 5 styles 2026-09-30. 'country' (barnyard two-step) added 2026-10-01. 'stadium' (Friday-night marching stomp-clap anthem: brass stabs, horn melody, snare rolls) added 2026-10-02. 'bounce' (comedy marimba bounce: ragtime turnaround C-A7-Dm7-G7, staccato marimba hook, pizzicato bass, woodblock, soft brushes) added 2026-10-03. 'cumbia' (taco-night cumbia: Am-Dm-E-Am, root/fifth bass with pickups, off-beat guitar chops, detuned accordion melody, sine-click guiro, congas) added 2026-10-05. 'spooky' (playful Halloween monster swing: Dm-Bb7-A7-Dm walking pizzicato bass, organ stabs on 2/4, swung celesta hook, theremin-style sine woo every 4th bar, sine finger snaps, no noise) added 2026-10-07. 'bossa' (coffeehouse bossa nova: Dm9-G13-Cmaj9-A7b9 ii-V-I-VI, soft nylon-guitar comping in the 3-3-2 bossa clave, dotted root-fifth bass, breathy sine flute melody with vibrato, sine rim-clicks, soft kick, no noise) added 2026-10-09. 'reggae' (laid-back one-drop: C-Am-F-G, root-fifth-octave bass with rests, offbeat lowpassed guitar chops, organ bubble, soft melodica melody, kick+rim on beat 3, no noise) added 2026-10-13. 'grumpy' (grumpy-old-man oompah waltz in 3/4: G7-C-F progression, lowpassed tuba on 1, soft reed chord puffs on 2-3, bassoon melody with gentle vibrato, woodblock, soft kick, no noise) added 2026-10-14 for National Grouch Day. 'doowop' (50s sweetheart doo-wop ballad in 12/8: C-Am-F-G, piano triplet chords, soft 'ooh' choir pad, breathy sax melody with vibrato, sine rim-clicks on 2 and 4, soft kick, no noise) added 2026-10-16 for Sweetest Day."""
+Mike approved all 5 styles 2026-09-30. 'country' (barnyard two-step) added 2026-10-01. 'stadium' (Friday-night marching stomp-clap anthem: brass stabs, horn melody, snare rolls) added 2026-10-02. 'bounce' (comedy marimba bounce: ragtime turnaround C-A7-Dm7-G7, staccato marimba hook, pizzicato bass, woodblock, soft brushes) added 2026-10-03. 'cumbia' (taco-night cumbia: Am-Dm-E-Am, root/fifth bass with pickups, off-beat guitar chops, detuned accordion melody, sine-click guiro, congas) added 2026-10-05. 'spooky' (playful Halloween monster swing: Dm-Bb7-A7-Dm walking pizzicato bass, organ stabs on 2/4, swung celesta hook, theremin-style sine woo every 4th bar, sine finger snaps, no noise) added 2026-10-07. 'bossa' (coffeehouse bossa nova: Dm9-G13-Cmaj9-A7b9 ii-V-I-VI, soft nylon-guitar comping in the 3-3-2 bossa clave, dotted root-fifth bass, breathy sine flute melody with vibrato, sine rim-clicks, soft kick, no noise) added 2026-10-09. 'reggae' (laid-back one-drop: C-Am-F-G, root-fifth-octave bass with rests, offbeat lowpassed guitar chops, organ bubble, soft melodica melody, kick+rim on beat 3, no noise) added 2026-10-13. 'grumpy' (grumpy-old-man oompah waltz in 3/4: G7-C-F progression, lowpassed tuba on 1, soft reed chord puffs on 2-3, bassoon melody with gentle vibrato, woodblock, soft kick, no noise) added 2026-10-14 for National Grouch Day. 'doowop' (50s sweetheart doo-wop ballad in 12/8: C-Am-F-G, piano triplet chords, soft 'ooh' choir pad, breathy sax melody with vibrato, sine rim-clicks on 2 and 4, soft kick, no noise) added 2026-10-16 for Sweetest Day. 'pepband' (high-school pep-band drumline: C-Am-F-G7, bass drum on 1 and 3, snare backbeat with 16th accents and a roll into every 4th bar, sousaphone oom-pah, horn-section hits on 2 and 4, trumpet shout melody doubled by glockenspiel, tom fills) added 2026-10-16 for the Friday Night Lights reel."""
 import numpy as np, sys, wave
 from scipy.signal import butter, sosfilt, fftconvolve
 SR=44100
 import argparse
 ap=argparse.ArgumentParser(description='SignMyRoom royalty-free reel music generator')
-ap.add_argument('style',choices=['lofi','ukulele','tropical','funk','folk','country','stadium','bounce','cumbia','spooky','bossa','reggae','grumpy','doowop']);ap.add_argument('dur',type=float);ap.add_argument('out')
+ap.add_argument('style',choices=['lofi','ukulele','tropical','funk','folk','country','stadium','bounce','cumbia','spooky','bossa','reggae','grumpy','doowop','pepband']);ap.add_argument('dur',type=float);ap.add_argument('out')
 ap.add_argument('--transpose',type=int,default=0,help='semitones, -5..+5');ap.add_argument('--tempo',type=float,default=1.0,help='tempo multiplier 0.9..1.1');ap.add_argument('--seed',type=int,default=7)
 A=ap.parse_args();TR=A.transpose;BPMX=A.tempo
 rng=np.random.default_rng(A.seed)
@@ -193,6 +193,50 @@ def song(style,dur):
             if b%4==3:
                 for k in range(8): st(L,R,t0+3*beat+k*beat/8,snare(.05+0.035*k,230),pan=-.2)
         return finish(L[:int(dur*SR)],R[:int(dur*SR)],dur,.16,9800)
+    if style=='pepband':
+        bpm=132*BPMX; beat=60/bpm; bar=4*beat
+        prog=[(48,[60,64,67,72]),(45,[60,64,69,72]),(53,[60,65,69,72]),(55,[62,67,71,74])] # C Am F G7 pep chart
+        def horn(f,d,bite=1.0):
+            t=T(d); vib=1+0.0035*np.sin(2*np.pi*5.4*t)*np.clip(t*5,0,1); ph=2*np.pi*np.cumsum(f*vib)/SR
+            s_=np.sin(ph)+.42*np.sin(2*ph)+.30*np.sin(3*ph)+.16*np.sin(4*ph)+.07*np.sin(5*ph)+.03*np.sin(6*ph)
+            return lp(s_*env(len(t),int(.030*SR),int(.085*SR)),3200+900*bite)
+        def tuba(f,d):
+            t=T(d); ph=2*np.pi*np.cumsum(f*(1+0.10*np.exp(-t*30)))/SR
+            s_=np.sin(ph)+.30*np.sin(2*ph)+.10*np.sin(3*ph)
+            return lp(s_*np.exp(-t*3.2)*env(len(t),int(.012*SR),int(.05*SR)),620)
+        def glock(f,d):
+            t=T(d); s_=np.sin(2*np.pi*f*t)+.5*np.sin(2*np.pi*f*2.76*t)*np.exp(-t*9)+.22*np.sin(2*np.pi*f*5.4*t)*np.exp(-t*16)
+            return s_*np.exp(-t*5.5)*env(len(t),120,int(.25*SR))
+        def tom(f0,g=1):
+            t=T(.22); f=f0*(1+0.9*np.exp(-t*26)); ph=2*np.pi*np.cumsum(f)/SR
+            return g*(np.sin(ph)+.25*np.sin(2*ph))*np.exp(-t*13)
+        def bassdrum(g=1):
+            t=T(.34); f=95*np.exp(-t*20)+52; return g*lp(np.sin(2*np.pi*np.cumsum(f)/SR),300)*np.exp(-t*9)
+        mel=[72,72,76,79, 79,76,72,0, 74,74,77,81, 79,0,0,0]
+        for b in range(int(dur/bar)+2):
+            r,ch=prog[b%4]; t0=b*bar
+            # drumline: bass drum on 1 & 3, snare backbeat + 16th accents
+            st(L,R,t0,bassdrum(.50)); st(L,R,t0+2*beat,bassdrum(.42))
+            for k in (1,3): st(L,R,t0+k*beat,snare(.26,215),pan=-.18)
+            for k in (0.5,1.5,2.5,3.5): st(L,R,t0+k*beat,snare(.075,230),pan=-.25)
+            for k in (1.75,3.75): st(L,R,t0+k*beat,snare(.11,240),pan=-.3)
+            # sousaphone oom-pah
+            st(L,R,t0,tuba(midi(r-12),beat*1.15),.30); st(L,R,t0+2*beat,tuba(midi(r-5),beat*1.05),.24)
+            # horn-section chord hits on 2 and 4
+            for k in (1,3):
+                for j,nn in enumerate(ch): st(L,R,t0+k*beat+j*0.006,horn(midi(nn),beat*0.52,0.6),.165,pan=(j-1.5)*.20)
+            # trumpet shout melody
+            for k in range(4):
+                m=mel[(b%4)*4+k]
+                if m:
+                    nxt=mel[(b%4)*4+(k+1)%4]
+                    st(L,R,t0+k*beat+0.008,horn(midi(m),beat*(1.7 if nxt==0 else 0.92),1.0),.215,pan=.12)
+                    st(L,R,t0+k*beat+0.008,glock(midi(m+12),beat*0.9),.055,pan=.3)
+            # tom fill + snare roll into every 4th bar
+            if b%4==3:
+                for k,ff in enumerate((190,160,135,115)): st(L,R,t0+2*beat+k*beat/2,tom(ff,.30),pan=.15)
+                for k in range(8): st(L,R,t0+3*beat+k*beat/8,snare(.05+0.03*k,235),pan=-.2)
+        return finish(L[:int(dur*SR)],R[:int(dur*SR)],dur,.17,9600)
     if style=='bounce':
         bpm=124*BPMX; beat=60/bpm; bar=4*beat
         prog=[(48,[64,67,72]),(45,[61,64,67]),(50,[65,69,72]),(43,[65,67,71])] # C A7 Dm7 G7 ragtime turnaround
