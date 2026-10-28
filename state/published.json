@@ -978,6 +978,13 @@
       "facebook": "113314831371174_1115947467864778",
       "instagram": "18033163640854601",
       "media_url": "https://raw.githubusercontent.com/signmyroom/signmyroom-social/main/queue/2026-10-28/p0700_notamorningperson_20261028.jpg"
+    },
+    "2026-10-28-post-1300": {
+      "at": "2026-10-28T20:35:42.015149+00:00",
+      "facebook": "113314831371174_1116157951177063",
+      "instagram": "18204305527389071",
+      "instagram_tag_error": "GET /821604596112747/products: HTTP 400 -- GraphMethodException code=100 subcode=33 msg=\"Unsupported get request. Object with ID '821604596112747' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api\" user_msg=None",
+      "media_url": "https://raw.githubusercontent.com/signmyroom/signmyroom-social/main/queue/2026-10-28/p1300_sarcasticanswer_20261028.jpg"
     }
   }
 }
