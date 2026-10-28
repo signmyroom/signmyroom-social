@@ -170,14 +170,68 @@ def _create_container(params, attempts=4, delay=15):
     raise last
 
 
-def publish_instagram(item, media_url):
+# Meta catalog that the Shopify sales channel syncs into. In it, every Shopify
+# product is a "group" whose retailer_product_group_id is the Shopify product id,
+# and every variant is an item whose retailer_id is the Shopify variant id.
+CATALOG_ID = os.environ.get("CATALOG_ID", "821604596112747")
+
+
+def _shopify_ids(item):
+    ids = item.get("shopify_product_ids")
+    if ids is None and item.get("shopify_product_id"):
+        ids = [item["shopify_product_id"]]
+    return [str(i) for i in (ids or [])][:5]  # Instagram allows 5 tags max
+
+
+def product_tags(item):
+    """Instagram shopping tags for the Shopify product(s) shown in the post.
+
+    Opt-in per item: add "shopify_product_id" (or a list "shopify_product_ids")
+    to the schedule.json item. Each is looked up in the Meta catalog and the
+    first variant's catalog id becomes the tag. Tag position defaults to the
+    centre of the image, where the sign sits on every post graphic.
+    """
+    tags = []
+    for n, pid in enumerate(_shopify_ids(item)):
+        res = _get(
+            f"{CATALOG_ID}/products",
+            {
+                "filter": json.dumps({"retailer_product_group_id": {"eq": pid}}),
+                "fields": "id,retailer_id,review_status",
+                "limit": 1,
+            },
+        )
+        rows = res.get("data") or []
+        if not rows:
+            raise GraphError(f"shopify product {pid} not found in catalog {CATALOG_ID}")
+        tags.append({"product_id": rows[0]["id"], "x": 0.5, "y": round(0.5 + 0.08 * n, 2)})
+    return tags
+
+
+def publish_instagram(item, media_url, record=None):
     params = {"caption": item["caption_ig"]}
     if item["type"] == "reel":
         params.update({"media_type": "REELS", "video_url": media_url})
     else:
         params["image_url"] = media_url
 
-    container = _create_container(params)
+    # Product tags are a bonus, never a reason to lose the post: if the lookup
+    # or the tagged container fails for ANY reason, note it and post untagged.
+    if _shopify_ids(item):
+        try:
+            tags = product_tags(item)
+            if item["type"] == "reel":
+                tags = [{"product_id": t["product_id"]} for t in tags]  # no x/y on video
+            container = _create_container({**params, "product_tags": json.dumps(tags)})
+            if record is not None:
+                record["instagram_tags"] = [t["product_id"] for t in tags]
+        except Exception as exc:  # noqa: BLE001
+            print(f"    instagram: tagging failed, posting untagged -- {exc}", file=sys.stderr)
+            if record is not None:
+                record["instagram_tag_error"] = str(exc)[:500]
+            container = _create_container(params)
+    else:
+        container = _create_container(params)
     creation_id = container["id"]
 
     # Wait for EVERY type, not just reels. An image container is usually
@@ -279,7 +333,7 @@ def main():
         for platform in item["platforms"]:
             try:
                 if platform == "instagram":
-                    record["instagram"] = publish_instagram(item, media_url)
+                    record["instagram"] = publish_instagram(item, media_url, record)
                 elif platform == "facebook":
                     record["facebook"] = publish_facebook(item, media_url)
                 print(f"    {platform}: ok ({record.get(platform)})")
