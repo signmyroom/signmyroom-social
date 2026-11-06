@@ -1230,6 +1230,13 @@
       "instagram": "17991864288097782",
       "instagram_tag_error": "GET /821604596112747/products: HTTP 400 -- GraphMethodException code=100 subcode=33 msg=\"Unsupported get request. Object with ID '821604596112747' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api\" user_msg=None",
       "media_url": "https://raw.githubusercontent.com/signmyroom/signmyroom-social/main/queue/2026-11-06/p0700_morningpeople_20261106.jpg"
+    },
+    "2026-11-06-post-1300": {
+      "at": "2026-11-06T19:50:24.111123+00:00",
+      "facebook": "113314831371174_1125278440265014",
+      "instagram": "18097604192665140",
+      "instagram_tag_error": "GET /821604596112747/products: HTTP 400 -- GraphMethodException code=100 subcode=33 msg=\"Unsupported get request. Object with ID '821604596112747' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api\" user_msg=None",
+      "media_url": "https://raw.githubusercontent.com/signmyroom/signmyroom-social/main/queue/2026-11-06/p1300_sarcasticanswer_20261106.jpg"
     }
   }
 }
