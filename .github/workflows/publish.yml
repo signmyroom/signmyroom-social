@@ -2,9 +2,12 @@ name: Publish due posts
 
 on:
   schedule:
-    # Every 15 minutes. GitHub's cron can run late under load (5-20 min is
-    # normal), so slots are treated as "publish at or after", never exact.
-    - cron: "*/15 * * * *"
+    # GitHub throttled the busy */15 schedule to ~5 runs/day from Oct 7 2026, so
+    # run twice an hour at off-peak minutes, only in the hours right after each
+    # slot (7a/1p/7p/1a Eastern, in both EST and EDT). Slots are "at or after".
+    - cron: "4,34 0,1,5,6,7,11,12,13,17,18,19,23 * * *"
+    # Safety net in case a whole window gets dropped.
+    - cron: "47 */3 * * *"
   workflow_dispatch:
 
 # Never let two runs publish at the same time - that is how duplicates happen.
