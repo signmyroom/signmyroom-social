@@ -1699,6 +1699,20 @@
       "instagram": "18073612661625912",
       "instagram_tag_error": "GET /821604596112747/products: HTTP 400 -- GraphMethodException code=100 subcode=33 msg=\"Unsupported get request. Object with ID '821604596112747' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api\" user_msg=None",
       "media_url": "https://raw.githubusercontent.com/signmyroom/signmyroom-social/main/queue/2026-11-24/p1900_pawsoff_20261124.jpg"
+    },
+    "2026-11-25-post-0700": {
+      "at": "2026-11-25T19:35:56.383466+00:00",
+      "facebook": "113314831371174_1145190741607117",
+      "instagram": "18146459092611124",
+      "instagram_tag_error": "GET /821604596112747/products: HTTP 400 -- GraphMethodException code=100 subcode=33 msg=\"Unsupported get request. Object with ID '821604596112747' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api\" user_msg=None",
+      "media_url": "https://raw.githubusercontent.com/signmyroom/signmyroom-social/main/queue/2026-11-25/p0700_risecaffeinate_20261125.jpg"
+    },
+    "2026-11-25-post-1300": {
+      "at": "2026-11-25T19:36:27.684999+00:00",
+      "facebook": "113314831371174_1145190971607094",
+      "instagram": "18122770699987838",
+      "instagram_tag_error": "GET /821604596112747/products: HTTP 400 -- GraphMethodException code=100 subcode=33 msg=\"Unsupported get request. Object with ID '821604596112747' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api\" user_msg=None",
+      "media_url": "https://raw.githubusercontent.com/signmyroom/signmyroom-social/main/queue/2026-11-25/p1300_kitchenrules_20261125.jpg"
     }
   }
 }
